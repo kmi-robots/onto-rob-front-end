@@ -27,7 +27,7 @@ angular.module('ontoRobApp', ['ui.bootstrap','ui.router'])
 
 function dataService () {
 	this.capabilities = [];
-	this.serverPort = 5000;
+	this.serverPort = 7070;
 	this.streamPort = 8080;
 	
 	// gianluca's laptop on eduroam
@@ -35,8 +35,21 @@ function dataService () {
 	// this.streamIp = "http://137.108.118.237:"+this.streamPort+"/";
 	
 	// bender on eduroam
-	this.ip = "http://137.108.125.182:"+this.serverPort+"/";
-	this.streamIp = "http://137.108.125.182:"+this.streamPort+"/";
+	//this.ip = "http://137.108.119.143:"+this.serverPort+"/";
+	//this.streamIp = "http://137.119.123.143:"+this.streamPort+"/";
+	
+	
+	// bender on thecloud
+	//this.ip = "http://10.229.170.189:"+this.serverPort+"/";
+	//this.streamIp = "http://10.229.170.189:"+this.streamPort+"/";
+	
+	// bender on vpn
+	this.ip = "http://137.108.119.143:"+this.serverPort+"/";
+	this.streamIp = "http://137.108.119.143:"+this.streamPort+"/";
+	
+	// robot gianluca's wifi 
+	//this.ip = "http://10.42.0.187:"+this.serverPort+"/";
+	//this.streamIp = "http://10.42.0.187:"+this.streamPort+"/";
 	
 	// ardrone wifi
 	// this.ip = "http://192.168.1.3:"+this.serverPort+"/";
@@ -213,6 +226,18 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 		"Trigger":{
 			"display":"basic_display.html",
 			"refresh":3000
+		},
+		"Battery_Sensing":{
+			"display":"basic_display.html",
+			"refresh":3000
+		},
+		"Self_Sensing":{
+			"display":"status_display.html",
+			"refresh":3000
+		},
+		"Docking":{
+			"display":"basic_display.html",
+			"refresh":3000
 		}
 		
 	}
@@ -288,7 +313,7 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 					var curTopic = requestedCapability.topic;
 					var curCapType = $scope.getNameFromURI(curCapability.type);
 
-					if($scope.visualiserHash[curCapType]["display"] == "basic_display.html") {
+					if($scope.visualiserHash[curCapType]["display"] == "basic_display.html" || $scope.visualiserHash[curCapType]["display"] == "status_display.html") {
 				
 						//console.log("Response for basic "+ response.status);					
 						angular.forEach(curCapability.params, function(param) {
@@ -304,7 +329,7 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 						
 						console.log("Response for map "+ response.status);
 						
-						$scope.visualisersSettings[key] = {
+					$scope.visualisersSettings[key] = {
 								"info.origin.position.x":readParams["info.origin.position.x"],
 								"info.origin.position.y":readParams["info.origin.position.y"],
 								"info.origin.position.z":readParams["info.origin.position.z"],
@@ -1268,43 +1293,55 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 		var imgData = context.createImageData(width,height);
 		
 		var pixelIndex = 0;
-		for(var p = 0; p < matrix.length; ++p) {
+		//console.log(width + " " + height)
+		
+		var startIndex = 0
+		
+		// this is needed because the ImageData object is filled from the top-left
+		// corner. Instead, the image map from ROS follow a cartesian zero 
+		// (0 is at bottom-left corner)
+		for(var h = 1; h <= height; ++h) {
+			startIndex = matrix.length - h*width;
 			
-			var color = null;
+			for(var w = 0; w < width; ++w) {
+				var color = null;
 				
-			if(matrix[p] == -1) {
-				color = gray;
+				rosMapIndex = w + startIndex;
+				
+				if(matrix[rosMapIndex] == -1) {
+					color = gray;
+				}
+				else {
+					evaluatedColor = -(matrix[rosMapIndex]*2.55 - 255);
+					color = [evaluatedColor,evaluatedColor,evaluatedColor];
+				}
+				
+				// red
+				imgData.data[pixelIndex] = color[0];
+				pixelIndex++;
+				//green
+				imgData.data[pixelIndex] = color[1];
+				pixelIndex++;
+				//blue
+				imgData.data[pixelIndex] = color[2];
+				pixelIndex++;
+				//alpha
+				imgData.data[pixelIndex] = 255;
+				pixelIndex++;
 			}
-			else {
-				evaluatedColor = -(matrix[p]*2.55 - 255);
-				color = [evaluatedColor,evaluatedColor,evaluatedColor];
-			}
-			
-			// red
-			imgData.data[pixelIndex] = color[0];
-			pixelIndex++;
-			//green
-			imgData.data[pixelIndex] = color[1];
-			pixelIndex++;
-			//blue
-			imgData.data[pixelIndex] = color[2];
-			pixelIndex++;
-			//alpha
-			imgData.data[pixelIndex] = 255;
-			pixelIndex++;
 		}
 		
 		return imgData;
 	}
 
 	$scope.zoomOut = function(){
-		console.log("Halli");
+		console.log("Zoom out - not working");
 	}
 	$scope.zoomIn = function(){
-		console.log("Hallo");
+		console.log("Zoom in - not working");
 	}
 	
-	
+	// get mouse position on the map canvas
 	$scope.getMousePos = function ($event, cap, topic) {
 
 		key = cap+"/"+topic;
@@ -1313,13 +1350,13 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 		
 		if(curSettings != null) {
 			
-	  	  	let rect = $event.target.getBoundingClientRect(),
-	        x = $event.clientX - rect.left,
-	        y = $event.clientY - rect.top;
-    		// console.log(curSettings["info.origin.position.x"]);
-			// console.log(curSettings["info.origin.position.y"]);
-			finalx = (x - curSettings["info.width"]/2+curSettings["info.origin.position.x"])*curSettings["info.resolution"];
-			finaly = (y - curSettings["info.height"]/2+curSettings["info.origin.position.y"])*curSettings["info.resolution"];
+	  	  	let rect = $event.target.getBoundingClientRect();
+	        x = $event.clientX - rect.left;
+			// needed because the 0 in the canvas is computed from top-left corner
+	        y = curSettings["info.height"] - ($event.clientY - rect.top);
+			
+			finalx = (curSettings["info.origin.position.x"] + x*curSettings["info.resolution"]);
+			finaly = (curSettings["info.origin.position.y"] + y*curSettings["info.resolution"]);
 		
 			curSettings["mouse.x"] = finalx;
 			curSettings["mouse.y"] = finaly;

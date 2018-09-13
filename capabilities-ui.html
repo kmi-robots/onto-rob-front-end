@@ -47,7 +47,8 @@
 							
 							</div>
 						</div>
-						<div ng-hide="getNameFromURI(capability.type) == 'Vision' && capability.topic != '/camera/rgb/image'">
+						<div ng-hide="getNameFromURI(capability.type) == 'Vision' && capability.topic != '/camera/rgb/image_raw'">
+							<!-- this prints also void capabilities, eg. Self_sensing from topic=/laptop_charge and msgType = "sensor_msgs/BatteryState"-->
 							<div ng-if="capability.mode == 'read' && capability.params.length > 0 ">
 							
 								<div class="capability rounded-7"  ng-style="{background: capability.backgroundColor}">
