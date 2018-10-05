@@ -1186,6 +1186,8 @@ function ontorobCtrl($scope, $http, $state, $compile,$interval, Data){
 		
 	}
 	
+	// TODO to investigate how this can work, since the return inside the
+	// foreach function make THAT function return, not the removeRecursively outher function...
 	function removeRecursively (instructionArray, instructionToRemove) {
 		
 		angular.forEach(instructionArray,function(curInstruction) {
